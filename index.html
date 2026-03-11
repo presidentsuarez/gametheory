@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Game Theory — A Complete Field Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #080808;
+  --paper: #0f0f0f;
+  --card: #141414;
+  --border: #222;
+  --accent: #FFD600;
+  --accent2: #FF3B3B;
+  --accent3: #00E5FF;
+  --text: #EEEADE;
+  --muted: #888;
+  --dim: #444;
+  --green: #39FF14;
+  --mono: 'JetBrains Mono', monospace;
+  --serif: 'Crimson Pro', Georgia, serif;
+  --display: 'Bebas Neue', Impact, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.7;
+  cursor: none;
+}
+
+/* CUSTOM CURSOR */
+#cursor {
+  width: 12px; height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  transition: transform 0.1s, width 0.2s, height 0.2s, background 0.2s;
+  mix-blend-mode: difference;
+}
+#cursor.big { width: 40px; height: 40px; }
+
+/* NOISE OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.4;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 500;
+  background: rgba(8,8,8,0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+.nav-logo {
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--accent); }
+.nav-progress {
+  position: absolute;
+  bottom: 0; left: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.1s;
+}
+
+/* HERO */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 120px 80px 80px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,214,0,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,214,0,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridPan 30s linear infinite;
+}
+@keyframes gridPan {
+  from { transform: translateY(0); }
+  to   { transform: translateY(60px); }
+}
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.2s forwards;
+}
+.hero h1 {
+  font-family: var(--display);
+  font-size: clamp(80px, 14vw, 180px);
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  opacity: 0;
+  animation: fadeUp 0.8s 0.4s forwards;
+}
+.hero h1 span { color: var(--accent); }
+.hero-sub {
+  font-size: 22px;
+  font-style: italic;
+  color: var(--muted);
+  max-width: 600px;
+  margin-top: 32px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.6s forwards;
+}
+.hero-meta {
+  display: flex;
+  gap: 40px;
+  margin-top: 56px;
+  opacity: 0;
+  animation: fadeUp 0.8s 0.8s forwards;
+}
+.hero-meta-item {
+  border-left: 2px solid var(--accent);
+  padding-left: 16px;
+}
+.hero-meta-item .num {
+  font-family: var(--display);
+  font-size: 36px;
+  color: var(--accent);
+  line-height: 1;
+}
+.hero-meta-item .label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.hero-scroll {
+  position: absolute;
+  bottom: 40px;
+  left: 80px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  animation: fadeUp 0.8s 1.2s forwards;
+}
+.hero-scroll::before {
+  content: '';
+  width: 40px; height: 1px;
+  background: var(--dim);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* SECTIONS */
+section {
+  padding: 100px 80px;
+  border-top: 1px solid var(--border);
+  position: relative;
+}
+.section-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.section-num {
+  font-family: var(--display);
+  font-size: 120px;
+  color: var(--border);
+  position: absolute;
+  top: 60px;
+  right: 80px;
+  line-height: 1;
+  pointer-events: none;
+}
+h2 {
+  font-family: var(--display);
+  font-size: clamp(42px, 5vw, 72px);
+  letter-spacing: 0.03em;
+  line-height: 1;
+  margin-bottom: 32px;
+  color: var(--text);
+}
+h3 {
+  font-family: var(--display);
+  font-size: 32px;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+p { margin-bottom: 20px; color: #ccc; }
+p:last-child { margin-bottom: 0; }
+
+strong { color: var(--text); font-weight: 600; }
+em { color: var(--accent); font-style: italic; }
+
+/* CALLOUT BOX */
+.callout {
+  background: var(--card);
+  border-left: 4px solid var(--accent);
+  padding: 24px 28px;
+  margin: 32px 0;
+  position: relative;
+}
+.callout.red { border-color: var(--accent2); }
+.callout.blue { border-color: var(--accent3); }
+.callout.green { border-color: var(--green); }
+.callout-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.callout.red .callout-label { color: var(--accent2); }
+.callout.blue .callout-label { color: var(--accent3); }
+.callout.green .callout-label { color: var(--green); }
+.callout p { margin: 0; }
+
+/* TWO COL */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: start;
+}
+.three-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+
+/* MATRIX */
+.matrix-wrapper {
+  margin: 32px 0;
+}
+.matrix-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.matrix-container {
+  overflow-x: auto;
+}
+table.matrix {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--mono);
+}
+table.matrix th, table.matrix td {
+  border: 1px solid var(--border);
+  padding: 14px 20px;
+  text-align: center;
+}
+table.matrix th {
+  background: #111;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+}
+table.matrix td {
+  font-size: 16px;
+  background: var(--card);
+  transition: background 0.2s;
+}
+table.matrix td:hover { background: #1e1e1e; }
+table.matrix td.nash { color: var(--accent); font-weight: 700; }
+table.matrix td.pareto { color: var(--green); }
+table.matrix td.row-label {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+  background: #111;
+}
+.matrix-legend {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.matrix-legend span { display: flex; align-items: center; gap: 8px; }
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* INTERACTIVE PRISONER */
+.prisoner-game {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 40px;
+  margin: 32px 0;
+}
+.prisoner-title {
+  font-family: var(--display);
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.prisoner-sub {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 32px;
+  letter-spacing: 0.1em;
+}
+.prisoner-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.player-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 24px;
+}
+.player-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.choice-btn {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  margin-bottom: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+.choice-btn:hover { background: #1e1e1e; border-color: var(--accent); }
+.choice-btn.selected-cooperate { background: rgba(57,255,20,0.1); border-color: var(--green); color: var(--green); }
+.choice-btn.selected-defect { background: rgba(255,59,59,0.1); border-color: var(--accent2); color: var(--accent2); }
+.prisoner-result {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 24px;
+  display: none;
+  animation: fadeUp 0.3s forwards;
+}
+.prisoner-result.visible { display: block; }
+.result-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.score-box {
+  background: var(--card);
+  padding: 20px;
+  text-align: center;
+}
+.score-num {
+  font-family: var(--display);
+  font-size: 48px;
+  line-height: 1;
+}
+.score-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.result-analysis { font-size: 15px; color: var(--muted); line-height: 1.6; }
+
+/* TIMELINE */
+.timeline {
+  position: relative;
+  padding-left: 40px;
+  margin: 40px 0;
+}
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 48px;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 0.5s;
+}
+.timeline-item.visible { opacity: 1; transform: translateX(0); }
+.timeline-dot {
+  position: absolute;
+  left: -44px;
+  top: 6px;
+  width: 10px; height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+.timeline-year {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.timeline-name {
+  font-family: var(--display);
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+.timeline-desc { font-size: 16px; color: var(--muted); }
+
+/* CONCEPT CARDS */
+.concept-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 32px;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.concept-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+.concept-card:hover::before { transform: scaleX(1); }
+.concept-card:hover { border-color: #333; transform: translateY(-2px); }
+.concept-card.red::before { background: var(--accent2); }
+.concept-card.blue::before { background: var(--accent3); }
+.concept-card.green::before { background: var(--green); }
+.card-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  margin-bottom: 12px;
+}
+.card-title {
+  font-family: var(--display);
+  font-size: 26px;
+  margin-bottom: 12px;
+}
+.card-body { font-size: 15px; color: var(--muted); line-height: 1.7; }
+
+/* EXAMPLE SCENARIO */
+.scenario {
+  background: var(--card);
+  border: 1px solid var(--border);
+  margin: 32px 0;
+}
+.scenario-header {
+  background: var(--accent);
+  color: #000;
+  padding: 16px 24px;
+  font-family: var(--display);
+  font-size: 20px;
+  letter-spacing: 0.05em;
+}
+.scenario-header.red { background: var(--accent2); color: #fff; }
+.scenario-header.blue { background: var(--accent3); color: #000; }
+.scenario-body { padding: 28px; }
+.scenario-body p { margin-bottom: 16px; }
+
+/* QUIZ */
+.quiz-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 36px;
+  margin: 32px 0;
+}
+.quiz-question {
+  font-size: 20px;
+  font-style: italic;
+  margin-bottom: 24px;
+  color: var(--text);
+}
+.quiz-options { display: grid; gap: 10px; }
+.quiz-btn {
+  width: 100%;
+  padding: 14px 20px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.quiz-btn:hover:not(:disabled) { border-color: var(--accent); background: #1a1a1a; }
+.quiz-btn.correct { background: rgba(57,255,20,0.1); border-color: var(--green); color: var(--green); }
+.quiz-btn.wrong { background: rgba(255,59,59,0.1); border-color: var(--accent2); color: var(--accent2); }
+.quiz-letter {
+  font-family: var(--mono);
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  border: 1px solid currentColor;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.quiz-feedback {
+  margin-top: 20px;
+  padding: 16px 20px;
+  font-size: 15px;
+  display: none;
+  line-height: 1.7;
+}
+.quiz-feedback.visible { display: block; }
+.quiz-feedback.correct { background: rgba(57,255,20,0.08); border-left: 3px solid var(--green); color: #ccc; }
+.quiz-feedback.wrong { background: rgba(255,59,59,0.08); border-left: 3px solid var(--accent2); color: #ccc; }
+
+/* ADVANCED */
+.advanced-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  margin: 32px 0;
+}
+.advanced-card {
+  background: var(--card);
+  padding: 32px;
+  border-top: 2px solid var(--border);
+  transition: border-color 0.2s;
+}
+.advanced-card:hover { border-top-color: var(--accent); }
+.advanced-tag {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.advanced-title {
+  font-family: var(--display);
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+.advanced-body { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+/* REAL WORLD */
+.realworld-item {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 32px;
+  align-items: start;
+  padding: 32px 0;
+  border-bottom: 1px solid var(--border);
+}
+.realworld-icon {
+  font-size: 48px;
+  line-height: 1;
+}
+.realworld-title {
+  font-family: var(--display);
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.realworld-body { font-size: 16px; color: var(--muted); }
+
+/* FORMULA */
+.formula {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 20px 28px;
+  margin: 20px 0;
+  font-family: var(--mono);
+  font-size: 16px;
+  color: var(--accent3);
+  overflow-x: auto;
+}
+
+/* TABS */
+.tabs { margin: 32px 0; }
+.tab-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  gap: 0;
+}
+.tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+.tab-panel { display: none; padding: 32px 0; }
+.tab-panel.active { display: block; }
+
+/* FOOTER */
+footer {
+  padding: 60px 80px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 40px;
+}
+.footer-logo {
+  font-family: var(--display);
+  font-size: 36px;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+.footer-desc { font-size: 14px; color: var(--muted); }
+.footer-col-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.footer-links { list-style: none; }
+.footer-links li { margin-bottom: 8px; }
+.footer-links a {
+  font-size: 15px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--accent); }
+.footer-bottom {
+  padding: 24px 80px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+
+/* SCROLL REVEAL */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.7s, transform 0.7s;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* HIGHLIGHT */
+mark {
+  background: rgba(255,214,0,0.15);
+  color: var(--accent);
+  padding: 0 4px;
+}
+
+/* DIVIDER */
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, var(--accent), transparent);
+  margin: 40px 0;
+}
+
+/* CHAPTER HERO */
+.chapter-hero {
+  background: linear-gradient(135deg, #0f0f0f, #080808);
+  border: 1px solid var(--border);
+  padding: 48px;
+  margin-bottom: 60px;
+  position: relative;
+  overflow: hidden;
+}
+.chapter-hero::after {
+  content: attr(data-chapter);
+  position: absolute;
+  right: 40px;
+  bottom: -20px;
+  font-family: var(--display);
+  font-size: 120px;
+  color: rgba(255,214,0,0.04);
+  pointer-events: none;
+}
+.chapter-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.chapter-title {
+  font-family: var(--display);
+  font-size: clamp(36px, 5vw, 64px);
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 20px;
+}
+.chapter-intro { font-size: 19px; color: var(--muted); max-width: 640px; font-style: italic; }
+
+/* STRATEGY TABLE */
+.strat-table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+.strat-table th {
+  background: #111;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 12px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+}
+.strat-table td {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  font-size: 15px;
+  background: var(--card);
+  color: #ccc;
+  vertical-align: top;
+}
+.strat-table tr:hover td { background: #181818; }
+
+/* MOBILE */
+@media (max-width: 768px) {
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  .hero, section, footer, .footer-bottom { padding-left: 24px; padding-right: 24px; }
+  .hero h1 { font-size: 64px; }
+  .two-col, .three-col, .advanced-grid, footer { grid-template-columns: 1fr; }
+  .section-num { display: none; }
+  .prisoner-choices { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">GAME THEORY</div>
+  <ul class="nav-links">
+    <li><a href="#foundations">Foundations</a></li>
+    <li><a href="#prisoners">Prisoner's Dilemma</a></li>
+    <li><a href="#nash">Nash Equilibrium</a></li>
+    <li><a href="#types">Types of Games</a></li>
+    <li><a href="#realworld">Real World</a></li>
+    <li><a href="#advanced">Advanced</a></li>
+  </ul>
+  <div class="nav-progress" id="navProgress"></div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-grid-bg"></div>
+  <div style="position:relative;z-index:2">
+    <div class="hero-eyebrow">A Complete Field Guide</div>
+    <h1>GAME<br/><span>THEORY</span></h1>
+    <p class="hero-sub">Why rational people make terrible decisions together — and how understanding that changes everything.</p>
+    <div class="hero-meta">
+      <div class="hero-meta-item">
+        <div class="num">7</div>
+        <div class="label">Chapters</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="num">Nobel</div>
+        <div class="label">Prize Winners</div>
+      </div>
+      <div class="hero-meta-item">
+        <div class="num">∞</div>
+        <div class="label">Applications</div>
+      </div>
+    </div>
+    <div class="hero-scroll">Scroll to Begin</div>
+  </div>
+</div>
+
+<!-- SECTION 1: WHAT IS GAME THEORY -->
+<section id="foundations">
+  <div class="section-num">01</div>
+  <div class="section-tag">Chapter One</div>
+
+  <div class="chapter-hero" data-chapter="01">
+    <div class="chapter-tag">Starting From Zero</div>
+    <div class="chapter-title">WHAT IS<br/>GAME THEORY?</div>
+    <div class="chapter-intro">Before we dive into math, let's get the core idea completely clear — no jargon, just logic.</div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <h3>The Big Idea</h3>
+      <p>Imagine you and your friend both want the last slice of pizza. What you do depends on what your friend does. And what your friend does depends on what you do. That's it. <strong>That's game theory.</strong></p>
+      <p>Game theory is the scientific study of <em>strategic interaction</em> — situations where the outcome for you depends not just on your own choices, but on the choices of others.</p>
+      <p>It doesn't matter if we're talking about two countries deciding whether to go to war, two companies setting prices, or two siblings negotiating who does the dishes. The same mathematical logic applies.</p>
+    </div>
+    <div>
+      <div class="callout">
+        <div class="callout-label">The Formal Definition</div>
+        <p>A <strong>game</strong> in game theory has three ingredients:</p>
+        <br/>
+        <p><strong>1. Players</strong> — who is making decisions?</p>
+        <p><strong>2. Strategies</strong> — what choices does each player have?</p>
+        <p><strong>3. Payoffs</strong> — what does each player get for each combination of choices?</p>
+        <br/>
+        <p>That's the complete recipe. Everything else is just working out the math.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="reveal">
+    <h3>Why Does This Matter?</h3>
+    <p>Before game theory, economists assumed people made decisions in isolation — just "maximize your own outcome." But that's almost never how the world works. Almost every important decision you make involves other people reacting to you.</p>
+  </div>
+
+  <div class="three-col reveal" style="gap:2px; margin-top:32px;">
+    <div class="concept-card">
+      <div class="card-num">01 — BUSINESS</div>
+      <div class="card-title">Pricing Wars</div>
+      <div class="card-body">When Walmart lowers prices, Target has to decide whether to match them. When Target reacts, Walmart reacts to that. This infinite loop is a game.</div>
+    </div>
+    <div class="concept-card red">
+      <div class="card-num">02 — POLITICS</div>
+      <div class="card-title">Nuclear Deterrence</div>
+      <div class="card-body">The Cold War was kept "cold" because both superpowers understood the game: mutual destruction means neither side should shoot first.</div>
+    </div>
+    <div class="concept-card blue">
+      <div class="card-num">03 — DAILY LIFE</div>
+      <div class="card-title">Traffic Jams</div>
+      <div class="card-body">Every driver choosing the "fastest" route creates congestion that makes everyone slower. Game theory predicted this — and explains why GPS apps sometimes make it worse.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="reveal">
+    <h3>A Brief History</h3>
+    <div class="timeline">
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">1928</div>
+        <div class="timeline-name">John von Neumann</div>
+        <div class="timeline-desc">Proved the minimax theorem — that in any two-player zero-sum game, there's always an optimal strategy. Game theory is born.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">1944</div>
+        <div class="timeline-name">Theory of Games and Economic Behavior</div>
+        <div class="timeline-desc">Von Neumann and Oskar Morgenstern publish the bible of game theory. Economics would never be the same.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">1950</div>
+        <div class="timeline-name">John Nash — The Equilibrium</div>
+        <div class="timeline-desc">Nash, a 21-year-old PhD student at Princeton, proves his famous equilibrium theorem in a 27-page dissertation. He wins the Nobel Prize 44 years later.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">1994</div>
+        <div class="timeline-name">Nobel Prize in Economics</div>
+        <div class="timeline-desc">Nash, Harsanyi, and Selten win the Nobel for their contributions to game theory — cementing it as one of the most important ideas in social science.</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-year">Today</div>
+        <div class="timeline-name">Everywhere</div>
+        <div class="timeline-desc">Used in AI, biology (evolution), auction design, climate negotiations, antitrust law, and social media algorithms. It's the language of strategic thinking.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 2: PRISONER'S DILEMMA -->
+<section id="prisoners">
+  <div class="section-num">02</div>
+  <div class="section-tag">Chapter Two</div>
+
+  <div class="chapter-hero" data-chapter="02">
+    <div class="chapter-tag">The Most Famous Game Ever</div>
+    <div class="chapter-title">THE PRISONER'S<br/>DILEMMA</div>
+    <div class="chapter-intro">A story about two criminals that reveals the darkest truth in all of social science.</div>
+  </div>
+
+  <div class="reveal">
+    <h3>The Story</h3>
+    <p>Two suspects — let's call them Alex and Blake — are arrested for a crime. The police separate them immediately so they can't communicate. Each is offered the same deal:</p>
+  </div>
+
+  <div class="scenario reveal">
+    <div class="scenario-header">THE DEAL ON THE TABLE</div>
+    <div class="scenario-body">
+      <p>🔇 <strong>If you stay silent (Cooperate)</strong> and your partner also stays silent: both get <mark>1 year</mark> in prison. Minor charge, not much evidence.</p>
+      <p>🗣️ <strong>If you betray (Defect)</strong> your partner and they stay silent: you go <mark>free</mark>, they get <mark>5 years</mark>.</p>
+      <p>🗣️🗣️ <strong>If you both betray</strong> each other: you both get <mark>3 years</mark>. Reduced sentence for cooperating with police, but you're both convicted.</p>
+      <p style="margin:0; color:var(--accent)">You have 30 seconds. You can't talk to each other. What do you do?</p>
+    </div>
+  </div>
+
+  <div class="matrix-wrapper reveal">
+    <div class="matrix-title">Payoff Matrix — Years in Prison (Lower = Better)</div>
+    <div class="matrix-container">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Blake: Silent (Cooperate)</th>
+            <th>Blake: Betray (Defect)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Alex: Silent (Cooperate)</td>
+            <td class="pareto">Alex: 1yr, Blake: 1yr ✓</td>
+            <td style="color:var(--accent2)">Alex: 5yr, Blake: 0yr</td>
+          </tr>
+          <tr>
+            <td class="row-label">Alex: Betray (Defect)</td>
+            <td style="color:var(--accent2)">Alex: 0yr, Blake: 5yr</td>
+            <td class="nash">Alex: 3yr, Blake: 3yr ★</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="matrix-legend">
+      <span><span class="legend-dot" style="background:var(--green)"></span> Best collective outcome (Pareto Optimal)</span>
+      <span><span class="legend-dot" style="background:var(--accent)"></span> Nash Equilibrium (what rational players actually do)</span>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <h3>The Brutal Logic</h3>
+      <p>Here's why rational Alex always betrays — no matter what:</p>
+      <div class="callout green">
+        <div class="callout-label">Alex's Thinking — If Blake stays silent</div>
+        <p>"If Blake stays silent, I get 1 year if I'm silent... but 0 years if I betray. <strong>Better to betray.</strong>"</p>
+      </div>
+      <div class="callout red" style="margin-top:12px">
+        <div class="callout-label">Alex's Thinking — If Blake betrays</div>
+        <p>"If Blake betrays, I get 5 years if I'm silent... but only 3 years if I betray back. <strong>Better to betray.</strong>"</p>
+      </div>
+      <p style="margin-top:20px">Betray is the right move whether Blake is silent <em>or</em> betraying. It's what game theorists call a <strong>dominant strategy</strong> — it's always better regardless of what the other player does.</p>
+      <p>Blake reasons the exact same way. So both betray. Both get 3 years.</p>
+      <p>But wait — if they'd both stayed silent, they'd only get 1 year each. They just made each other <em>worse off by being rational.</em></p>
+    </div>
+    <div>
+      <h3>The Paradox</h3>
+      <div class="callout blue">
+        <div class="callout-label">The Core Tragedy</div>
+        <p>Individual rationality leads to <strong>collective irrationality</strong>. Each person doing what's best for themselves creates an outcome that's worse for everyone.</p>
+      </div>
+      <br/>
+      <p>This is why we have:</p>
+      <p>• <strong>Cartels</strong> that fall apart (everyone cheats)</p>
+      <p>• <strong>Arms races</strong> (both countries build weapons, both less safe)</p>
+      <p>• <strong>Overfishing</strong> (rational fishermen destroy the fishery)</p>
+      <p>• <strong>Doping in sports</strong> (everyone dopes, no one gains advantage)</p>
+      <p>• <strong>Climate change</strong> (each country pollutes, all suffer)</p>
+      <br/>
+      <p>The Prisoner's Dilemma isn't just a thought experiment. It's the structure of most of the world's hardest problems.</p>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE GAME -->
+  <div class="prisoner-game reveal">
+    <div class="prisoner-title">PLAY IT YOURSELF</div>
+    <div class="prisoner-sub">You are Alex. Blake's choice is determined by game logic. What do you do?</div>
+    <div class="prisoner-choices">
+      <div class="player-panel">
+        <div class="player-name">Your Choice (Alex)</div>
+        <button class="choice-btn" id="btnCooperate" onclick="prisonerChoice('cooperate')">🤐 Stay Silent (Cooperate)</button>
+        <button class="choice-btn" id="btnDefect" onclick="prisonerChoice('defect')">🗣️ Betray Blake (Defect)</button>
+      </div>
+      <div class="player-panel">
+        <div class="player-name">Blake's Choice</div>
+        <div id="blakeStatus" style="color:var(--muted);font-size:15px;margin-top:8px">Waiting for your decision...</div>
+      </div>
+    </div>
+    <div class="prisoner-result" id="prisonerResult">
+      <div class="result-scores">
+        <div class="score-box">
+          <div class="score-label" style="margin-bottom:8px">YOUR SENTENCE</div>
+          <div class="score-num" id="alexScore" style="color:var(--accent)">?</div>
+          <div class="score-label">years</div>
+        </div>
+        <div class="score-box">
+          <div class="score-label" style="margin-bottom:8px">BLAKE'S SENTENCE</div>
+          <div class="score-num" id="blakeScore" style="color:var(--muted)">?</div>
+          <div class="score-label">years</div>
+        </div>
+      </div>
+      <div class="result-analysis" id="resultAnalysis"></div>
+      <button onclick="resetPrisoner()" style="margin-top:20px;padding:12px 24px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:12px;letter-spacing:0.1em;cursor:pointer;text-transform:uppercase;transition:all 0.2s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">Play Again</button>
+    </div>
+  </div>
+
+  <!-- ITERATED DILEMMA -->
+  <div class="reveal" style="margin-top:60px">
+    <h3>But What If You Play Multiple Rounds?</h3>
+    <p>Here's where it gets really interesting. The one-shot Prisoner's Dilemma says: always defect. But in real life, we interact with the same people over and over. This changes everything.</p>
+
+    <div class="tabs">
+      <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab(this, 'tab-titfortat')">Tit for Tat</button>
+        <button class="tab-btn" onclick="switchTab(this, 'tab-alwaysdefect')">Always Defect</button>
+        <button class="tab-btn" onclick="switchTab(this, 'tab-alwayscooperate')">Always Cooperate</button>
+        <button class="tab-btn" onclick="switchTab(this, 'tab-grim')">Grim Trigger</button>
+      </div>
+      <div class="tab-panel active" id="tab-titfortat">
+        <h3>Tit for Tat — The Legendary Strategy</h3>
+        <p>In 1980, political scientist Robert Axelrod ran a tournament: submit a strategy for iterated Prisoner's Dilemma, and see which beats all others over 200 rounds.</p>
+        <p>The winner, submitted by Anatol Rapoport, was shockingly simple:</p>
+        <div class="callout green">
+          <div class="callout-label">The Tit for Tat Rules</div>
+          <p><strong>Round 1:</strong> Cooperate.</p>
+          <p><strong>Every round after:</strong> Do exactly what your opponent did last round. If they cooperated, cooperate. If they defected, defect.</p>
+        </div>
+        <p>That's it. Four lines. Yet it beat every complex strategy submitted. The lesson: <em>be nice, be retaliatory, be forgiving, be clear.</em> These four properties — encoded in the simplest possible way — turn out to be the foundation of cooperation in nature and society.</p>
+      </div>
+      <div class="tab-panel" id="tab-alwaysdefect">
+        <h3>Always Defect — The Cynic's Strategy</h3>
+        <p>The "obvious" rational strategy: never cooperate, no matter what. Exploit every cooperative player you meet.</p>
+        <div class="callout red">
+          <div class="callout-label">Why It Fails Long-Term</div>
+          <p>Always Defect wins against naive cooperators but fails catastrophically against Tit for Tat and other retaliatory strategies. In Axelrod's tournament, it finished near the bottom. Bad reputation compounds.</p>
+        </div>
+        <p>This is why genuinely exploitative strategies tend to destroy themselves — they poison the environment they rely on. Once everyone knows you always defect, nobody cooperates with you.</p>
+      </div>
+      <div class="tab-panel" id="tab-alwayscooperate">
+        <h3>Always Cooperate — The Naive Idealist</h3>
+        <p>Cooperate every single round, no matter what your opponent does. Pure altruism.</p>
+        <div class="callout">
+          <div class="callout-label">Why It Fails</div>
+          <p>Gets absolutely massacred by Always Defect. An always-cooperative player is an infinite resource for exploiters. Finishing near the bottom in most tournaments, it demonstrates that unconditional niceness — without any retaliation mechanism — is not a stable strategy.</p>
+        </div>
+        <p>The insight: cooperation requires the <em>credible threat</em> of retaliation. Pure kindness without any teeth isn't a strategy — it's an invitation.</p>
+      </div>
+      <div class="tab-panel" id="tab-grim">
+        <h3>Grim Trigger — The Nuclear Option</h3>
+        <p>Cooperate until your opponent defects even once. Then defect forever, for the rest of the game. No forgiveness.</p>
+        <div class="callout blue">
+          <div class="callout-label">The Psychology</div>
+          <p>Extremely effective at preventing defection because the punishment is so severe. But one mistake — accidental or misinterpreted — locks both players into permanent mutual defection. It's the game-theoretic equivalent of MAD (Mutually Assured Destruction).</p>
+        </div>
+        <p>Grim Trigger performs well mathematically but poorly in noisy environments where miscommunication happens. The real world is noisy. This is why Tit for Tat — which forgives after one retaliatory defection — tends to outperform it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: NASH EQUILIBRIUM -->
+<section id="nash">
+  <div class="section-num">03</div>
+  <div class="section-tag">Chapter Three</div>
+
+  <div class="chapter-hero" data-chapter="03">
+    <div class="chapter-tag">The Central Concept</div>
+    <div class="chapter-title">NASH<br/>EQUILIBRIUM</div>
+    <div class="chapter-intro">The idea that won John Nash the Nobel Prize — and changed how we understand everything from traffic to war.</div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <h3>What Is It, Really?</h3>
+      <p>A Nash Equilibrium is a situation where <strong>nobody can do better by changing only their own strategy</strong>, given what everyone else is doing.</p>
+      <p>In other words: it's a stable state. Everyone has made their best possible response to everyone else. No one has any incentive to change.</p>
+      <p>It doesn't mean everyone is happy. It doesn't mean the outcome is good. It just means the situation is <em>stable</em> — no one player can unilaterally improve their position.</p>
+    </div>
+    <div>
+      <div class="callout blue">
+        <div class="callout-label">The Classic Analogy</div>
+        <p>Imagine everyone in a concert hall choosing where to sit. A Nash Equilibrium is reached when nobody would prefer to move to a different empty seat, given where everyone else is sitting.</p>
+        <br/>
+        <p>Notice: this might leave many good seats empty. The outcome can be inefficient. But it's stable — no individual has reason to change.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="reveal">
+    <h3>Example: Where to Open Your Restaurant?</h3>
+    <p>Suppose two ice cream vendors, Mia and Leo, are setting up on a beach. Beachgoers are spread evenly from one end to the other. Where should each vendor go?</p>
+  </div>
+
+  <div class="scenario reveal">
+    <div class="scenario-header blue">The Ice Cream Vendor Game</div>
+    <div class="scenario-body">
+      <p><strong>Mia's logic:</strong> "If Leo sets up at the quarter-mile mark, I should set up just next to him — toward the center — to capture more than half the beach."</p>
+      <p><strong>Leo's logic:</strong> "If Mia moved toward center to steal my customers, I should also move toward center."</p>
+      <p><strong>The result:</strong> Both vendors end up right in the middle of the beach. Nobody can gain by moving. That's the Nash Equilibrium.</p>
+      <p><strong>The cost:</strong> Beachgoers at both ends now have to walk much further. The socially optimal solution — vendors at the quarter marks — is not the equilibrium. Individual rationality again produces collective inefficiency.</p>
+      <p style="color:var(--accent3);margin:0"><strong>This explains why gas stations cluster together, why political parties converge to the center, and why TV networks all show similar content in primetime.</strong></p>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:48px">
+    <h3>Nash's Key Insight: Equilibria Always Exist</h3>
+    <p>What Nash proved — and this is the mathematical genius — is that <strong>every finite game has at least one Nash Equilibrium</strong>, if you allow for "mixed strategies" (randomizing your choices).</p>
+
+    <div class="callout">
+      <div class="callout-label">Mixed Strategies — What Does That Mean?</div>
+      <p>Sometimes your best strategy is to randomize. In Rock-Paper-Scissors, if you always play Rock, your opponent will always play Paper. The only Nash Equilibrium is to play each option with exactly 1/3 probability — then your opponent can't exploit you.</p>
+      <br/>
+      <p>This is why poker players sometimes bluff with bad hands. If you never bluff, opponents can read you perfectly. Randomization is strategically essential.</p>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:48px">
+    <h3>Multiple Equilibria: The Coordination Problem</h3>
+    <p>Some games have multiple Nash Equilibria — and figuring out which one will happen is one of game theory's deepest puzzles.</p>
+  </div>
+
+  <div class="matrix-wrapper reveal">
+    <div class="matrix-title">Battle of the Sexes — Two Equilibria Exist</div>
+    <div class="matrix-container">
+      <table class="matrix">
+        <thead>
+          <tr><th></th><th>Sam: Opera</th><th>Sam: Football</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Jordan: Opera</td>
+            <td class="nash">Jordan: 2, Sam: 1 ★</td>
+            <td style="color:var(--dim)">Jordan: 0, Sam: 0</td>
+          </tr>
+          <tr>
+            <td class="row-label">Jordan: Football</td>
+            <td style="color:var(--dim)">Jordan: 0, Sam: 0</td>
+            <td class="nash">Jordan: 1, Sam: 2 ★</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <p>Jordan prefers Opera. Sam prefers Football. But both prefer <em>being together</em> over being apart. There are two Nash Equilibria — both at Opera, or both at Football.</p>
+      <p>Which one happens? The math doesn't say. This is where <strong>focal points</strong> (Thomas Schelling's insight) come in — when there's no communication, people gravitate to obvious, culturally salient options.</p>
+    </div>
+    <div>
+      <div class="callout">
+        <div class="callout-label">Schelling's Focal Point Test</div>
+        <p>"If you had to meet a stranger in New York City tomorrow, with no prior communication about where or when — where would you go?"</p>
+        <br/>
+        <p>Most people say: <strong>noon, under the clock at Grand Central Station</strong>. Nobody coordinated. Nobody agreed. The answer just <em>feels obvious</em>. That's a focal point.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ 1 -->
+  <div class="quiz-card reveal">
+    <div class="section-tag" style="margin-bottom:16px">Knowledge Check</div>
+    <div class="quiz-question">In a Nash Equilibrium, which of the following is true?</div>
+    <div class="quiz-options">
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q1', 'Close, but no — Nash Equilibrium says nothing about whether outcomes are good. Both players in the Prisoner\'s Dilemma end up in a Nash Equilibrium with terrible outcomes.')">
+        <span class="quiz-letter">A</span> All players are getting the best possible outcome
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, true, 'q1', 'Correct! Nash Equilibrium means no single player can improve their payoff by unilaterally changing their strategy. It\'s about stability, not optimality. The outcome could be terrible — but stable.')">
+        <span class="quiz-letter">B</span> No player can improve by changing only their own strategy
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q1', 'Not quite. Players can still disagree or have different preferences. The equilibrium just means no one has incentive to deviate unilaterally.')">
+        <span class="quiz-letter">C</span> All players agree on their strategies
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q1', 'Wrong — Nash proved every finite game has at least one equilibrium (in mixed strategies). His whole contribution was proving equilibria always exist.')">
+        <span class="quiz-letter">D</span> The game has no stable outcome
+      </button>
+    </div>
+    <div class="quiz-feedback" id="q1-feedback"></div>
+  </div>
+</section>
+
+<!-- SECTION 4: TYPES OF GAMES -->
+<section id="types">
+  <div class="section-num">04</div>
+  <div class="section-tag">Chapter Four</div>
+
+  <div class="chapter-hero" data-chapter="04">
+    <div class="chapter-tag">The Taxonomy</div>
+    <div class="chapter-title">TYPES OF<br/>GAMES</div>
+    <div class="chapter-intro">Not all strategic situations are the same. Here's how to classify them — and why the classification matters.</div>
+  </div>
+
+  <div class="advanced-grid reveal">
+    <div class="advanced-card">
+      <div class="advanced-tag">Dimension 01</div>
+      <div class="advanced-title">Zero-Sum vs Non-Zero-Sum</div>
+      <div class="advanced-body">
+        <p><strong>Zero-sum:</strong> One player's gain is exactly another's loss. Total winnings always equal zero. Chess, poker, war. Pure conflict.</p>
+        <br/>
+        <p><strong>Non-zero-sum:</strong> Players can all gain, or all lose, simultaneously. Most economic interactions, negotiations, climate deals. Cooperation can create value.</p>
+        <br/>
+        <p><em>Why it matters:</em> Zero-sum thinking applied to non-zero-sum games destroys value. Many business "negotiations" are actually non-zero-sum — there are trades that benefit both sides, but people miss them by treating it as combat.</p>
+      </div>
+    </div>
+    <div class="advanced-card">
+      <div class="advanced-tag">Dimension 02</div>
+      <div class="advanced-title">Simultaneous vs Sequential</div>
+      <div class="advanced-body">
+        <p><strong>Simultaneous:</strong> Players choose at the same time (or without knowing others' choices). Analyzed with Nash Equilibrium. Rock-Paper-Scissors, sealed bids.</p>
+        <br/>
+        <p><strong>Sequential:</strong> Players move in turns, seeing what came before. Analyzed with Backward Induction. Chess, negotiation with offers and counteroffers.</p>
+        <br/>
+        <p><em>Why it matters:</em> Moving first can be an advantage (chess openings) or a disadvantage (showing your hand). The structure of timing completely changes the strategic logic.</p>
+      </div>
+    </div>
+    <div class="advanced-card">
+      <div class="advanced-tag">Dimension 03</div>
+      <div class="advanced-title">Perfect vs Imperfect Information</div>
+      <div class="advanced-body">
+        <p><strong>Perfect information:</strong> Every player knows the complete history of the game. Chess. Everything visible.</p>
+        <br/>
+        <p><strong>Imperfect information:</strong> Some actions are hidden. Poker. You don't know opponents' cards.</p>
+        <br/>
+        <p><strong>Incomplete information:</strong> Players don't even know others' payoffs or "types." You don't know if the other negotiator is desperate or has options.</p>
+        <br/>
+        <p><em>Why it matters:</em> Imperfect information is where bluffing, signaling, and screening strategies come alive.</p>
+      </div>
+    </div>
+    <div class="advanced-card">
+      <div class="advanced-tag">Dimension 04</div>
+      <div class="advanced-title">Cooperative vs Non-Cooperative</div>
+      <div class="advanced-body">
+        <p><strong>Non-cooperative:</strong> Players act individually. Most of classical game theory. Nash Equilibrium is the solution concept.</p>
+        <br/>
+        <p><strong>Cooperative:</strong> Players can form binding coalitions and negotiate collectively. How should the gains from cooperation be split? Analyzed with the Shapley Value.</p>
+        <br/>
+        <p><em>Example:</em> Three companies merge. How do you fairly divide profits given each contributed differently? The Shapley Value — used by everything from cost accounting to AI interpretability — answers this.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- STAG HUNT -->
+  <div class="reveal">
+    <h3>The Stag Hunt — Trust and Risk</h3>
+    <p>Two hunters can jointly hunt a stag (big prize, requires both) or each hunt a hare alone (small prize, guaranteed). This game reveals the tension between <em>safety</em> and <em>social cooperation</em>.</p>
+  </div>
+
+  <div class="matrix-wrapper reveal">
+    <div class="matrix-title">Stag Hunt Payoff Matrix</div>
+    <div class="matrix-container">
+      <table class="matrix">
+        <thead>
+          <tr><th></th><th>Hunter B: Hunt Stag</th><th>Hunter B: Hunt Hare</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-label">Hunter A: Hunt Stag</td>
+            <td class="pareto">A: 4, B: 4 — Best! ✓</td>
+            <td style="color:var(--accent2)">A: 0, B: 2</td>
+          </tr>
+          <tr>
+            <td class="row-label">Hunter A: Hunt Hare</td>
+            <td style="color:var(--accent2)">A: 2, B: 0</td>
+            <td class="nash">A: 2, B: 2 ★</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="two-col reveal">
+    <div>
+      <p>Unlike the Prisoner's Dilemma, here <em>both</em> Nash Equilibria are pure cooperation or pure safety. The best outcome (4,4) is achievable — but only if both players trust each other.</p>
+      <p>The hare hunt (2,2) is the <strong>risk-dominant</strong> equilibrium — safer to guarantee yourself 2 than risk getting 0 if the other defects.</p>
+      <p>The stag hunt (4,4) is the <strong>payoff-dominant</strong> equilibrium — better for everyone, but requires trust.</p>
+    </div>
+    <div>
+      <div class="callout green">
+        <div class="callout-label">Real World: Climate Agreements</div>
+        <p>Countries reducing carbon emissions is a stag hunt. If everyone cooperates, everyone benefits enormously. But if one country doesn't cooperate, cooperating countries sacrifice their economies for nothing.</p>
+        <br/>
+        <p>The game theory solution: <strong>binding agreements, verification mechanisms, and reputation effects</strong> — turning the one-shot stag hunt into a repeated game where cooperation becomes stable.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUIZ 2 -->
+  <div class="quiz-card reveal">
+    <div class="section-tag" style="margin-bottom:16px">Knowledge Check</div>
+    <div class="quiz-question">A poker game where players don't see each other's cards is best described as:</div>
+    <div class="quiz-options">
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q2', 'Not quite. Zero-sum refers to payoff structure (one wins what another loses), not information. Poker is zero-sum, but that\'s a separate dimension.')">
+        <span class="quiz-letter">A</span> A zero-sum game
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q2', 'Close! In a cooperative game, players form binding coalitions. Poker is competitive, not cooperative.')">
+        <span class="quiz-letter">B</span> A cooperative game
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, true, 'q2', 'Exactly right. Imperfect information means players make moves without knowing all previous actions or the private information (cards) of others. This is what makes bluffing strategically rational.')">
+        <span class="quiz-letter">C</span> A game of imperfect information
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q2', 'A sequential game involves players moving in turns with visibility of prior moves. In poker, cards are hidden — it\'s the information structure, not the timing, that defines the key feature here.')">
+        <span class="quiz-letter">D</span> A sequential game
+      </button>
+    </div>
+    <div class="quiz-feedback" id="q2-feedback"></div>
+  </div>
+</section>
+
+<!-- SECTION 5: REAL WORLD -->
+<section id="realworld">
+  <div class="section-num">05</div>
+  <div class="section-tag">Chapter Five</div>
+
+  <div class="chapter-hero" data-chapter="05">
+    <div class="chapter-tag">It's Everywhere</div>
+    <div class="chapter-title">GAME THEORY<br/>IN THE WILD</div>
+    <div class="chapter-intro">This isn't academic theory. It's the operating system running underneath every negotiation, market, and conflict on earth.</div>
+  </div>
+
+  <div class="reveal">
+    <div class="realworld-item">
+      <div class="realworld-icon">🎰</div>
+      <div>
+        <div class="realworld-title">Spectrum Auctions</div>
+        <div class="realworld-body">
+          <p>When the US government sells radio spectrum to telecom companies, they use auction formats designed entirely by game theorists. The FCC's 1994 auction raised $617 million — far more than expected — because the auction design accounted for bidders' strategic behavior. The 2020 C-Band auction raised $81 billion. Game theory literally designed the mechanism.</p>
+        </div>
+      </div>
+    </div>
+    <div class="realworld-item">
+      <div class="realworld-icon">🤖</div>
+      <div>
+        <div class="realworld-title">AI and Machine Learning</div>
+        <div class="realworld-body">
+          <p>Generative Adversarial Networks (GANs) — the AI behind deepfakes and AI art — are literally two-player zero-sum games. A generator tries to fool a discriminator; the discriminator tries to catch the generator. They reach Nash Equilibrium when the generator makes perfect fakes. The entire architecture is applied game theory.</p>
+          <p>Reinforcement learning, used to train AlphaGo, Chess AI, and modern language models, is solving massive sequential games with imperfect information.</p>
+        </div>
+      </div>
+    </div>
+    <div class="realworld-item">
+      <div class="realworld-icon">🦠</div>
+      <div>
+        <div class="realworld-title">Evolutionary Biology</div>
+        <div class="realworld-body">
+          <p>Evolution plays game theory without consciousness. Hawks (aggressive) vs Doves (peaceful) competing for resources reaches a Nash Equilibrium mixture of both strategies in a population. Too many hawks, and hawks start killing each other — doves gain. Too many doves, and hawks dominate. The equilibrium proportion is mathematically derivable.</p>
+          <p>This is why animal populations often stabilize at predictable sex ratios, territorial sizes, and aggression levels — they're at evolutionary Nash Equilibria.</p>
+        </div>
+      </div>
+    </div>
+    <div class="realworld-item">
+      <div class="realworld-icon">🏦</div>
+      <div>
+        <div class="realworld-title">Financial Markets</div>
+        <div class="realworld-body">
+          <p>Stock markets are multi-player games with imperfect information. Flash crashes occur when algorithmic traders all reach the same Nash Equilibrium simultaneously — pull out — creating a cascade. The 2010 Flash Crash erased $1 trillion in market value in minutes because trading algorithms all made the same "rational" move.</p>
+          <p>Market makers, arbitrageurs, and high-frequency traders are constantly playing iterated games against each other. The bid-ask spread is the equilibrium outcome of that competition.</p>
+        </div>
+      </div>
+    </div>
+    <div class="realworld-item">
+      <div class="realworld-icon">🏥</div>
+      <div>
+        <div class="realworld-title">Matching Markets — The Kidney Exchange</div>
+        <div class="realworld-body">
+          <p>Nobel Laureate Al Roth applied game theory to design kidney exchange programs. The problem: Patient A needs a kidney, and their donor isn't compatible. Patient B has the same problem. But A's donor is compatible with B, and B's donor is compatible with A. Roth designed matching algorithms — solving a complex cooperative game — that have saved thousands of lives. He also redesigned how US medical students are matched to hospitals, fixing a broken market using mechanism design.</p>
+        </div>
+      </div>
+    </div>
+    <div class="realworld-item">
+      <div class="realworld-icon">⚛️</div>
+      <div>
+        <div class="realworld-title">Nuclear Deterrence</div>
+        <div class="realworld-body">
+          <p>MAD — Mutually Assured Destruction — is a Nash Equilibrium. If Country A fires first, Country B retaliates and both are destroyed. If neither fires, both survive. Neither country can improve by unilaterally changing its strategy (assuming the retaliation threat is credible). The entire Cold War was game theory playing out at geopolitical scale.</p>
+          <p>Thomas Schelling won the Nobel Prize for showing how commitment devices — burning bridges, making retaliation automatic — make deterrence credible. His work directly influenced nuclear policy.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 6: ADVANCED -->
+<section id="advanced">
+  <div class="section-num">06</div>
+  <div class="section-tag">Chapter Six — Advanced</div>
+
+  <div class="chapter-hero" data-chapter="06">
+    <div class="chapter-tag">For the Serious Student</div>
+    <div class="chapter-title">ADVANCED<br/>CONCEPTS</div>
+    <div class="chapter-intro">You understand the foundation. Now let's go deeper — the ideas that power modern economics, AI, and political science.</div>
+  </div>
+
+  <!-- SIGNALING -->
+  <div class="reveal">
+    <h3>Signaling Theory</h3>
+    <p>How do you communicate private information credibly? If you know something the other party doesn't, how do they know you're not lying?</p>
+    <div class="scenario">
+      <div class="scenario-header">Why Do People Get MBAs?</div>
+      <div class="scenario-body">
+        <p>Michael Spence (Nobel Prize, 2001) asked: Does an MBA actually make you more productive — or does it just signal that you were already smart and hardworking enough to complete it?</p>
+        <p>His model: employers can't directly observe your ability. But getting an MBA is painful and expensive. <strong>If low-ability workers find it too costly to fake the signal, only high-ability workers will get MBAs.</strong> Employers rationally reward MBA holders — not because of the skills taught, but because the degree credibly separates the able from the less able.</p>
+        <p style="color:var(--accent);margin:0">The signal works precisely because it's costly. Free signals are ignored. This is why peacocks have absurd tails, why luxury goods have visible logos, and why hazing exists in fraternities.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- MECHANISM DESIGN -->
+  <div class="reveal">
+    <h3>Mechanism Design — "Reverse Game Theory"</h3>
+    <p>Normal game theory: given a game, find the equilibrium. Mechanism design: given the outcome you want, design the game that produces it.</p>
+
+    <div class="callout blue">
+      <div class="callout-label">The Designer's Problem</div>
+      <p>You're running an auction. Bidders know their own valuations but not others'. You want to maximize revenue and efficiency. What auction format do you use?</p>
+      <br/>
+      <p><strong>William Vickrey proved</strong> (Nobel Prize, 1996): In a second-price auction (you win by bidding highest, but pay the second-highest bid), it's always in your interest to bid your true valuation. The mechanism extracts honest behavior from self-interested players.</p>
+      <br/>
+      <p>This insight powers Google's ad auctions, eBay, and most modern online marketplaces. Every time you use Google, mechanism design is running silently underneath.</p>
+    </div>
+
+    <div class="formula">
+      Revenue Equivalence Theorem: Under certain conditions, all standard auction formats (English, Dutch, first-price, second-price) yield the same expected revenue.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- BAYESIAN GAME -->
+  <div class="reveal">
+    <h3>Bayesian Games — Playing with Uncertainty</h3>
+    <p>Real-world games rarely have complete information. You don't know your opponent's costs, their desperation, their outside options. Harsanyi (Nobel Prize, 1994) formalized how to handle this.</p>
+
+    <div class="two-col">
+      <div>
+        <div class="callout">
+          <div class="callout-label">The Poker Example</div>
+          <p>You're holding a weak hand. Should you bluff? It depends on what you think your opponent believes about your hand — and what they think you think they believe...</p>
+          <br/>
+          <p>Harsanyi's insight: model each player as a random "type" drawn from a distribution. Rational players form beliefs (priors) about others' types and update using Bayes' theorem as the game unfolds. The equilibrium concept is <strong>Bayesian Nash Equilibrium</strong>.</p>
+        </div>
+      </div>
+      <div>
+        <div class="callout blue">
+          <div class="callout-label">Application: Negotiations</div>
+          <p>In salary negotiations, you don't know the company's budget. They don't know your other offers. Both sides signal (sometimes honestly, sometimes not).</p>
+          <br/>
+          <p>Game theory predicts: <strong>screening mechanisms</strong> emerge — companies ask for salary history, put out wide ranges, use take-it-or-leave-it offers — all designed to extract private information without giving it away.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SUBGAME PERFECT -->
+  <div class="reveal">
+    <h3>Subgame Perfection — Credible Threats</h3>
+    <p>Nash Equilibrium has a flaw: it can include equilibria sustained by threats that would never actually be carried out.</p>
+
+    <div class="scenario">
+      <div class="scenario-header red">The Entry Deterrence Game</div>
+      <div class="scenario-body">
+        <p><strong>Setup:</strong> You're a new company thinking of entering a market dominated by Megacorp. Megacorp threatens: "If you enter, we'll start a price war and destroy both of us."</p>
+        <p><strong>The Nash Equilibrium says:</strong> If you believe the threat, don't enter. Megacorp never has to follow through. Threat works.</p>
+        <p><strong>But is it credible?</strong> If you actually enter, does Megacorp want to start a price war? <em>No</em> — the price war hurts Megacorp too. The threat is empty. You should call the bluff.</p>
+        <p style="color:var(--accent2);margin:0"><strong>Subgame Perfect Equilibrium</strong> (Reinhard Selten, Nobel 1994) eliminates equilibria sustained by non-credible threats using backward induction. It predicts: you enter, Megacorp accommodates.</p>
+      </div>
+    </div>
+
+    <div class="callout green" style="margin-top:24px">
+      <div class="callout-label">Backward Induction — The Key Technique</div>
+      <p>To find what rational players do in a sequential game: start at the end. What would a rational player do in the last move? Then work backwards. What would they do in the second-to-last move, knowing what comes after? Continue until you reach the first move.</p>
+      <br/>
+      <p>Chess computers use this (to enormous depth). CEOs use this in merger negotiations. Lawyers use this in settlement decisions. It's the logic of thinking ahead.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SHAPLEY VALUE -->
+  <div class="reveal">
+    <h3>The Shapley Value — Fair Division</h3>
+    <p>Three lawyers form a firm. Lawyer A alone earns $100k. Lawyer B alone earns $150k. Lawyers A+B together earn $400k (synergy!). Add Lawyer C and together they earn $600k. How do you fairly split the $600k?</p>
+
+    <div class="callout">
+      <div class="callout-label">Lloyd Shapley's Answer (Nobel Prize, 2012)</div>
+      <p>Calculate each player's <strong>average marginal contribution</strong> across all possible orderings in which they could join the coalition. That's their fair share.</p>
+      <br/>
+      <p>The Shapley Value is the unique solution satisfying four axioms: efficiency, symmetry, dummy player, and additivity. It's used in cost allocation, profit splitting, voting power analysis, and — strikingly — explaining neural networks (SHAP values in ML explainability).</p>
+    </div>
+
+    <div class="formula">
+      φᵢ(v) = Σ [|S|!(n-|S|-1)!/n!] × [v(S∪{i}) - v(S)]
+      <br/><span style="color:var(--muted);font-size:13px">Sum over all subsets S not containing player i of the marginal contribution weighted by probability of that coalition order arising</span>
+    </div>
+  </div>
+
+  <!-- QUIZ 3 -->
+  <div class="quiz-card reveal">
+    <div class="section-tag" style="margin-bottom:16px">Advanced Check</div>
+    <div class="quiz-question">Why does the second-price (Vickrey) auction incentivize bidders to bid their true valuations?</div>
+    <div class="quiz-options">
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q3', 'Not quite. The payment depends on the second-highest bid, not your own. Bidding high doesn\'t directly increase what you pay — it only increases your chance of winning.')">
+        <span class="quiz-letter">A</span> Because bidding high forces others to pay more
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q3', 'Incorrect. Game theory doesn\'t rely on trust or honesty as innate traits — it derives honest behavior from self-interest. The mechanism is designed so honesty is the dominant strategy.')">
+        <span class="quiz-letter">B</span> Because bidders are inherently honest
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, true, 'q3', 'Exactly. Since you pay the second-highest bid (not your own), bidding above your true value risks overpaying for something worth less to you, and bidding below risks losing a valuable item. Your true valuation is the uniquely safe bid — it\'s a dominant strategy.')">
+        <span class="quiz-letter">C</span> Because overbidding risks paying more than something is worth, and underbidding risks losing it — true valuation is the uniquely safe choice
+      </button>
+      <button class="quiz-btn" onclick="checkQuiz(this, false, 'q3', 'The auctioneer doesn\'t actually verify valuations — that\'s the whole challenge. The mechanism design works by making it in bidders\' self-interest to reveal truth, without any verification needed.')">
+        <span class="quiz-letter">D</span> Because the auctioneer verifies all valuations independently
+      </button>
+    </div>
+    <div class="quiz-feedback" id="q3-feedback"></div>
+  </div>
+</section>
+
+<!-- SECTION 7: CRITIQUE & LIMITS -->
+<section id="critique">
+  <div class="section-num">07</div>
+  <div class="section-tag">Chapter Seven</div>
+
+  <div class="chapter-hero" data-chapter="07">
+    <div class="chapter-tag">The Hard Truths</div>
+    <div class="chapter-title">WHERE GAME<br/>THEORY FAILS</div>
+    <div class="chapter-intro">No framework is complete. Here's where classical game theory breaks down — and what comes next.</div>
+  </div>
+
+  <div class="three-col reveal" style="gap:2px">
+    <div class="concept-card red">
+      <div class="card-num">LIMIT 01</div>
+      <div class="card-title">The Rationality Assumption</div>
+      <div class="card-body">Classical game theory assumes players are perfectly rational and self-interested. But humans are systematically irrational. In the <strong>Ultimatum Game</strong>, players routinely reject "unfair" offers even when accepting any amount beats getting nothing — sacrificing money to punish perceived injustice. Emotions, norms, and fairness drive behavior in ways pure rationality can't predict.</div>
+    </div>
+    <div class="concept-card">
+      <div class="card-num">LIMIT 02</div>
+      <div class="card-title">Equilibrium Selection</div>
+      <div class="card-body">When multiple Nash Equilibria exist, game theory often can't say which one players will reach. Refinements (subgame perfection, trembling hand perfection) help but don't fully solve the problem. In practice, history, culture, communication, and focal points determine outcomes in ways the math struggles to capture.</div>
+    </div>
+    <div class="concept-card blue">
+      <div class="card-num">LIMIT 03</div>
+      <div class="card-title">Computational Complexity</div>
+      <div class="card-body">Finding Nash Equilibria is computationally hard. For large games, it may be effectively impossible — even for computers. Real chess has more positions than atoms in the universe. Perfect backward induction is theoretically correct but practically impossible beyond small games. This is why heuristics, pattern recognition, and machine learning dominate real game-playing.</div>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:40px">
+    <h3>Behavioral Game Theory — The Fix</h3>
+    <p>Modern game theory incorporates psychology. Kahneman and Tversky's Prospect Theory — people hate losses more than they love equivalent gains — gets embedded into game-theoretic models. Players are modeled as having <strong>bounded rationality</strong> (limited cognitive capacity), <strong>social preferences</strong> (caring about fairness and others' outcomes), and <strong>time inconsistency</strong> (preferences that change depending on when you ask).</p>
+    <div class="callout green">
+      <div class="callout-label">The Result</div>
+      <p>Behavioral game theory is harder, messier, and less elegant than classical game theory — but far more accurate. It's what powers modern behavioral economics, nudge theory, and evidence-based policy design. The field is still developing.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="reveal">
+    <h3>The Core Lessons — Carry These With You</h3>
+    <table class="strat-table">
+      <thead>
+        <tr><th>Lesson</th><th>What It Means</th><th>Where It Applies</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Incentives determine behavior</strong></td>
+          <td>People respond to the structure of payoffs, not to intentions or moralizing. Design the right incentives.</td>
+          <td>Policy, management, contracts, product design</td>
+        </tr>
+        <tr>
+          <td><strong>Individual rationality ≠ collective good</strong></td>
+          <td>What's optimal for each person can be terrible for everyone. Coordination mechanisms are essential.</td>
+          <td>Climate, public goods, regulation, team dynamics</td>
+        </tr>
+        <tr>
+          <td><strong>Credibility is everything</strong></td>
+          <td>A threat or promise only works if it's believable. Commit devices (contracts, automation) make it credible.</td>
+          <td>Negotiation, deterrence, parenting, management</td>
+        </tr>
+        <tr>
+          <td><strong>Repeated games change everything</strong></td>
+          <td>The shadow of the future enables cooperation. Short-term relationships breed exploitation; long-term ones breed trust.</td>
+          <td>Business partnerships, international relations, friendships</td>
+        </tr>
+        <tr>
+          <td><strong>Information is power</strong></td>
+          <td>Who knows what, and when, determines outcomes. Signaling, screening, and information design are strategic tools.</td>
+          <td>Hiring, pricing, negotiations, intelligence</td>
+        </tr>
+        <tr>
+          <td><strong>The game can be redesigned</strong></td>
+          <td>You don't always have to play the game as given. Changing the rules — the payoffs, timing, information — changes everything.</td>
+          <td>Entrepreneurship, policy, negotiation, innovation</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>
+    <div class="footer-logo">GT</div>
+    <p class="footer-desc">A complete introduction to game theory — from the basic intuition to Nobel Prize-winning advanced concepts.</p>
+  </div>
+  <div>
+    <div class="footer-col-title">Chapters</div>
+    <ul class="footer-links">
+      <li><a href="#foundations">01 — Foundations</a></li>
+      <li><a href="#prisoners">02 — Prisoner's Dilemma</a></li>
+      <li><a href="#nash">03 — Nash Equilibrium</a></li>
+      <li><a href="#types">04 — Types of Games</a></li>
+      <li><a href="#realworld">05 — Real World</a></li>
+      <li><a href="#advanced">06 — Advanced Concepts</a></li>
+      <li><a href="#critique">07 — Limits</a></li>
+    </ul>
+  </div>
+  <div>
+    <div class="footer-col-title">Nobel Laureates</div>
+    <ul class="footer-links">
+      <li><a href="#nash">John Nash — 1994</a></li>
+      <li><a href="#advanced">John Harsanyi — 1994</a></li>
+      <li><a href="#advanced">Reinhard Selten — 1994</a></li>
+      <li><a href="#advanced">William Vickrey — 1996</a></li>
+      <li><a href="#advanced">Michael Spence — 2001</a></li>
+      <li><a href="#advanced">Thomas Schelling — 2005</a></li>
+      <li><a href="#advanced">Al Roth & Lloyd Shapley — 2012</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>GAME THEORY — A COMPLETE FIELD GUIDE</span>
+  <span>Strategy · Rationality · Equilibrium</span>
+</div>
+
+<script>
+// CURSOR
+const cursor = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
+document.querySelectorAll('a, button, .concept-card, .choice-btn, .quiz-btn, .tab-btn, .advanced-card').forEach(el => {
+  el.addEventListener('mouseenter', () => cursor.classList.add('big'));
+  el.addEventListener('mouseleave', () => cursor.classList.remove('big'));
+});
+
+// PROGRESS BAR
+window.addEventListener('scroll', () => {
+  const scrolled = window.scrollY;
+  const total = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('navProgress').style.width = (scrolled / total * 100) + '%';
+});
+
+// SCROLL REVEAL
+const revealEls = document.querySelectorAll('.reveal, .timeline-item');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), 100);
+    }
+  });
+}, { threshold: 0.1 });
+revealEls.forEach(el => observer.observe(el));
+
+// PRISONER'S DILEMMA GAME
+function prisonerChoice(alexChoice) {
+  const blakeChoice = 'defect'; // Blake always defects (rational Nash play)
+  const blakeStatus = document.getElementById('blakeStatus');
+  blakeStatus.textContent = blakeChoice === 'cooperate' ? '🤐 Stayed Silent' : '🗣️ Betrayed you';
+  blakeStatus.style.color = blakeChoice === 'cooperate' ? 'var(--green)' : 'var(--accent2)';
+
+  let alexYears, blakeYears, analysis, alexColor;
+  if (alexChoice === 'cooperate' && blakeChoice === 'cooperate') {
+    alexYears = 1; blakeYears = 1; alexColor = 'var(--green)';
+    analysis = "Both stayed silent. Best collective outcome — 1 year each. But this isn't a Nash Equilibrium. Either of you could have gotten 0 years by betraying. That temptation is why this rarely holds without communication and trust.";
+  } else if (alexChoice === 'cooperate' && blakeChoice === 'defect') {
+    alexYears = 5; blakeYears = 0; alexColor = 'var(--accent2)';
+    analysis = "You stayed loyal. Blake betrayed you. You get 5 years, Blake walks free. This is the worst outcome for you — the sucker's payoff. Blake played the dominant strategy. You didn't.";
+  } else if (alexChoice === 'defect' && blakeChoice === 'cooperate') {
+    alexYears = 0; blakeYears = 5; alexColor = 'var(--accent)';
+    analysis = "You betrayed Blake. Blake stayed silent. You walk free. You exploited their cooperation. But notice: Blake never cooperates in the true rational game. The simulation simplifies Blake's behavior.";
+  } else {
+    alexYears = 3; blakeYears = 3; alexColor = 'var(--accent)';
+    analysis = "Both defected. Nash Equilibrium. Both get 3 years — worse than if you'd both cooperated (1 year each). This is the tragedy: individual rationality created collective failure. Welcome to the Prisoner's Dilemma.";
+  }
+
+  document.getElementById('alexScore').textContent = alexYears;
+  document.getElementById('alexScore').style.color = alexColor;
+  document.getElementById('blakeScore').textContent = blakeYears;
+  document.getElementById('resultAnalysis').textContent = analysis;
+
+  const btnC = document.getElementById('btnCooperate');
+  const btnD = document.getElementById('btnDefect');
+  btnC.className = 'choice-btn' + (alexChoice === 'cooperate' ? ' selected-cooperate' : '');
+  btnD.className = 'choice-btn' + (alexChoice === 'defect' ? ' selected-defect' : '');
+  btnC.disabled = true; btnD.disabled = true;
+
+  document.getElementById('prisonerResult').classList.add('visible');
+}
+
+function resetPrisoner() {
+  document.getElementById('btnCooperate').className = 'choice-btn';
+  document.getElementById('btnDefect').className = 'choice-btn';
+  document.getElementById('btnCooperate').disabled = false;
+  document.getElementById('btnDefect').disabled = false;
+  document.getElementById('blakeStatus').textContent = 'Waiting for your decision...';
+  document.getElementById('blakeStatus').style.color = 'var(--muted)';
+  document.getElementById('prisonerResult').classList.remove('visible');
+}
+
+// TABS
+function switchTab(btn, panelId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// QUIZ
+function checkQuiz(btn, isCorrect, quizId, explanation) {
+  const container = btn.closest('.quiz-card');
+  container.querySelectorAll('.quiz-btn').forEach(b => b.disabled = true);
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if (!isCorrect) {
+    // find correct button and highlight
+    container.querySelectorAll('.quiz-btn').forEach(b => {
+      if (b.getAttribute('onclick').includes('true,')) b.classList.add('correct');
+    });
+  }
+  const feedback = document.getElementById(quizId + '-feedback');
+  feedback.textContent = explanation;
+  feedback.className = 'quiz-feedback visible ' + (isCorrect ? 'correct' : 'wrong');
+}
+</script>
+</body>
+</html>
